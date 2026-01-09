@@ -1,31 +1,25 @@
 # Memor
-example
+
+Memor namesp
 ``` cpp
-#include "Memor.hpp"
+uintptr_t Memor::GetProcessID(LPCTSTR target) noexcept(false);
+uintptr_t Memor::GetModBaseAddr(LPCTSTR target, DWORD pid) noexcept(false);
 
+PROCESSENTRY32 Memor::SnapProcess(LPCSTR target, DWORD dwFlags) noexcept(false);
+MODULEENTRY32 Memor::SnapModule(LPCSTR target, DWORD pid, DWORD dwFlags) noexcept(false);
+```
 
-template <typename... Args>
-constexpr void PrintInDBG(const char *format, Args... args) {
-    std::cout << "[+] Debug: " << std::vformat(format, std::make_format_args(args...)) << std::endl;
-}
+Memor::Extern namesp
+``` cpp
+template <typename T>
+T Memor::Extern::ReadChainT(std::string_view program, std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t>& offsets) noexcept(false);
 
+template <typename T>
+T Memor::Extern::WriteChainT(std::string_view program, std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t>& offsets, const T&& newValue) noexcept(false);
+```
 
-int bullets {};
-PrintInDBG("{}", "Read memory");
-try {
-    bullets = Memor::ReadChainT<int>("FarCry.exe", "XRenderD3D9.dll", 0x00162DC4, {0x20, 0x12c, 0xc, 0xa8});
-    PrintInDBG("bullets {0} 0x{0:X}", bullets);
-
-} catch (std::runtime_error er) {
-    PrintInDBG("{}", er.what());
-}
-
-PrintInDBG("{}", "Write memory");
-try {
-    bullets = Memor::WriteChainT<int>("FarCry.exe", "XRenderD3D9.dll", 0x00162DC4, {0x20, 0x12c, 0xc, 0xa8}, 300);
-    PrintInDBG("bullets {0} 0x{0:X}", bullets);
-
-} catch (std::runtime_error er) {
-    PrintInDBG("{}", er.what());
-}
+Memor::Intern namesp
+``` cpp
+template <typename T>
+T *Memor::Intern::RWChainT(std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t> &offsets) noexcept(false);
 ```
