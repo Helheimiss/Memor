@@ -14,11 +14,19 @@ namespace Memor {
     PROCESSENTRY32 SnapProcess(LPCSTR target, DWORD dwFlags) noexcept(false);
     MODULEENTRY32 SnapModule(LPCSTR target, DWORD pid, DWORD dwFlags) noexcept(false);
 
-    template <typename T>
-    T ReadChainT(std::string_view program, std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t>& offsets) noexcept(false);
+    namespace Extern {
+        template <typename T>
+        T ReadChainT(std::string_view program, std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t>& offsets) noexcept(false);
 
-    template <typename T>
-    T WriteChainT(std::string_view program, std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t>& offsets, const T&& newValue) noexcept(false);
+        template <typename T>
+        T WriteChainT(std::string_view program, std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t>& offsets, const T&& newValue) noexcept(false);
+    }
+
+    namespace Intern {
+        template <typename T>
+        T *RWChainT(std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t> &offsets) noexcept(false);
+    }
+
 }
 
 inline uintptr_t Memor::GetProcessID(LPCTSTR target) {
@@ -69,7 +77,7 @@ inline MODULEENTRY32 Memor::SnapModule(LPCSTR target, DWORD pid, DWORD dwFlags) 
 }
 
 template<typename T>
-inline T Memor::ReadChainT(std::string_view program, std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t> &offsets) {
+inline T Memor::Extern::ReadChainT(std::string_view program, std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t> &offsets) {
     uintptr_t pid {};
     uintptr_t moduleAddres {};
     HANDLE hProcess {INVALID_HANDLE_VALUE};
@@ -111,7 +119,7 @@ inline T Memor::ReadChainT(std::string_view program, std::string_view module, ui
 }
 
 template<typename T>
-inline T Memor::WriteChainT(std::string_view program, std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t> &offsets, const T &&newValue) {
+inline T Memor::Extern::WriteChainT(std::string_view program, std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t> &offsets, const T &&newValue) {
     uintptr_t pid {};
     uintptr_t moduleAddres {};
     HANDLE hProcess {INVALID_HANDLE_VALUE};
@@ -156,4 +164,42 @@ inline T Memor::WriteChainT(std::string_view program, std::string_view module, u
 
     CloseHandle(hProcess);
     return returnValue;
+}
+
+
+template <typename T>
+inline T *Memor::Intern::RWChainT(std::string_view module, uintptr_t baseAddres, const std::vector<uintptr_t> &offsets) noexcept(false) {
+    uintptr_t address = 0;
+
+    if (module.empty())
+        address = reinterpret_cast<uintptr_t>(GetCurrentProcess()) + baseAddres;
+    else
+        address = reinterpret_cast<uintptr_t>(GetModuleHandleA(module.data())) + baseAddres;
+
+
+    if (offsets.empty()) {
+        if (IsBadReadPtr(reinterpret_cast<LPCVOID>(address), sizeof(T)))
+            throw std::runtime_error("bad read 0x1");
+
+        return reinterpret_cast<T *>(address);
+    }
+
+
+    if (IsBadReadPtr(reinterpret_cast<LPCVOID>(address), sizeof(uintptr_t)))
+        throw std::runtime_error("bad read 0x2");
+
+    address = *reinterpret_cast<uintptr_t *>(address);
+    for (int i = 0; i < offsets.size() - 1; ++i) {
+        if (IsBadReadPtr(reinterpret_cast<LPCVOID>(address), sizeof(uintptr_t)))
+            throw std::runtime_error("bad read 0x3");
+
+        address += offsets[i];
+        address = *reinterpret_cast<uintptr_t *>(address);
+    }
+
+    if (IsBadReadPtr(reinterpret_cast<LPCVOID>(address), sizeof(T)))
+        throw std::runtime_error("bad read 0x4");
+
+    address += offsets.back();
+    return reinterpret_cast<T *>(address);
 }
