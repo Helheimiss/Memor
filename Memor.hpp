@@ -85,9 +85,13 @@ inline T Memor::Extern::ReadChainT(std::string_view program, std::string_view mo
     pid = GetProcessID(program.data());
     if (!pid) throw std::runtime_error("GetProcessID failed");
 
-    if (!module.empty()) {
+    if (module.empty()) {
+        moduleAddres = GetModBaseAddr(program.data(), pid);
+        if (!moduleAddres) throw std::runtime_error("GetModBaseAddr failed 0x1");
+    }
+    else {
         moduleAddres = GetModBaseAddr(module.data(), pid);
-        if (!moduleAddres) throw std::runtime_error("GetModBaseAddr failed");
+        if (!moduleAddres) throw std::runtime_error("GetModBaseAddr failed 0x2");
     }
 
     hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
@@ -127,9 +131,13 @@ inline T Memor::Extern::WriteChainT(std::string_view program, std::string_view m
     pid = GetProcessID(program.data());
     if (!pid) throw std::runtime_error("GetProcessID failed");
 
-    if (!module.empty()) {
+    if (module.empty()) {
+        moduleAddres = GetModBaseAddr(program.data(), pid);
+        if (!moduleAddres) throw std::runtime_error("GetModBaseAddr failed 0x1");
+    }
+    else {
         moduleAddres = GetModBaseAddr(module.data(), pid);
-        if (!moduleAddres) throw std::runtime_error("GetModBaseAddr failed");
+        if (!moduleAddres) throw std::runtime_error("GetModBaseAddr failed 0x2");
     }
 
     hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
@@ -172,7 +180,7 @@ inline T *Memor::Intern::RWChainT(std::string_view module, uintptr_t baseAddres,
     uintptr_t address = 0;
 
     if (module.empty())
-        address = reinterpret_cast<uintptr_t>(GetCurrentProcess()) + baseAddres;
+        address = reinterpret_cast<uintptr_t>(GetModuleHandleA(nullptr)) + baseAddres;
     else
         address = reinterpret_cast<uintptr_t>(GetModuleHandleA(module.data())) + baseAddres;
 
