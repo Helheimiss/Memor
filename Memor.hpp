@@ -32,9 +32,14 @@ namespace Memor {
         template <typename T>
         bool CheckWritePtr(T *pointer);
 
+        template <typename T>
+        bool CheckRWPtr(T *pointer);
+
         bool CheckReadPtr(uintptr_t pointer);
 
         bool CheckWritePtr(uintptr_t pointer);
+
+        bool CheckRWPtr(uintptr_t pointer);
     }
 
 }
@@ -92,6 +97,10 @@ inline bool Memor::Intern::CheckReadPtr(uintptr_t pointer) {
 
 inline bool Memor::Intern::CheckWritePtr(uintptr_t pointer) {
     return CheckWritePtr(reinterpret_cast<uintptr_t *>(pointer));
+}
+
+inline bool Memor::Intern::CheckRWPtr(uintptr_t pointer) {
+    return CheckReadPtr(pointer) && CheckWritePtr(pointer);
 }
 
 template<typename T>
@@ -246,4 +255,9 @@ inline bool Memor::Intern::CheckReadPtr(const T *pointer) {
 template<typename T>
 inline bool Memor::Intern::CheckWritePtr(T *pointer) {
     return pointer && !IsBadWritePtr(reinterpret_cast<LPVOID>(pointer),sizeof(T));
+}
+
+template<typename T>
+inline bool Memor::Intern::CheckRWPtr(T *pointer) {
+    return CheckReadPtr(pointer) && CheckWritePtr(pointer);
 }
