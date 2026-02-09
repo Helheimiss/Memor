@@ -31,6 +31,10 @@ namespace Memor {
 
         template <typename T>
         bool CheckWritePtr(T *pointer);
+
+        bool CheckReadPtr(uintptr_t pointer);
+
+        bool CheckWritePtr(uintptr_t pointer);
     }
 
 }
@@ -80,6 +84,14 @@ inline MODULEENTRY32 Memor::SnapModule(LPCSTR target, DWORD pid, DWORD dwFlags) 
 
     CloseHandle(hModuleSnap);
     throw std::runtime_error("SnapModule failed");
+}
+
+inline bool Memor::Intern::CheckReadPtr(uintptr_t pointer) {
+    return CheckReadPtr(reinterpret_cast<uintptr_t *>(pointer));
+}
+
+inline bool Memor::Intern::CheckWritePtr(uintptr_t pointer) {
+    return CheckWritePtr(reinterpret_cast<uintptr_t *>(pointer));
 }
 
 template<typename T>
@@ -186,7 +198,7 @@ inline T *Memor::Intern::RWChainT(std::string_view module, uintptr_t baseAddres,
     uintptr_t address = baseAddres;
 
     if (module.empty()) {
-        if (!CheckReadPtr(reinterpret_cast<uintptr_t *>(baseAddres)))
+        if (!CheckReadPtr(baseAddres))
             throw std::runtime_error("bad read 0x0");
 
         address = *reinterpret_cast<uintptr_t *>(address);
@@ -196,30 +208,30 @@ inline T *Memor::Intern::RWChainT(std::string_view module, uintptr_t baseAddres,
 
 
     if (offsets.empty()) {
-        if (IsBadReadPtr(reinterpret_cast<LPCVOID>(address), sizeof(T)))
+        if (!CheckReadPtr(address))
             throw std::runtime_error("bad read 0x1");
 
         return reinterpret_cast<T *>(address);
     }
 
 
-    if (IsBadReadPtr(reinterpret_cast<LPCVOID>(address), sizeof(uintptr_t)))
+    if (!CheckReadPtr(address))
         throw std::runtime_error("bad read 0x2");
 
     address = *reinterpret_cast<uintptr_t *>(address);
-    if (IsBadReadPtr(reinterpret_cast<LPCVOID>(address), sizeof(uintptr_t)))
+    if (!CheckReadPtr(address))
         throw std::runtime_error("bad read 0x3");
 
     for (int i = 0; i < offsets.size() - 1; ++i) {
         address += offsets[i];
 
-        if (IsBadReadPtr(reinterpret_cast<LPCVOID>(address), sizeof(uintptr_t)))
+        if (!CheckReadPtr(address))
             throw std::runtime_error("bad read 0x3");
 
         address = *reinterpret_cast<uintptr_t *>(address);
     }
 
-    if (IsBadReadPtr(reinterpret_cast<LPCVOID>(address), sizeof(T)))
+    if (!CheckReadPtr(address))
         throw std::runtime_error("bad read 0x4");
 
     address += offsets.back();
@@ -227,11 +239,11 @@ inline T *Memor::Intern::RWChainT(std::string_view module, uintptr_t baseAddres,
 }
 
 template<typename T>
-bool Memor::Intern::CheckReadPtr(const T *pointer) {
+inline bool Memor::Intern::CheckReadPtr(const T *pointer) {
     return pointer && !IsBadReadPtr(reinterpret_cast<LPCVOID>(pointer),sizeof(T));
 }
 
 template<typename T>
-bool Memor::Intern::CheckWritePtr(T *pointer) {
+inline bool Memor::Intern::CheckWritePtr(T *pointer) {
     return pointer && !IsBadWritePtr(reinterpret_cast<LPVOID>(pointer),sizeof(T));
 }
